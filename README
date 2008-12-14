@@ -1,0 +1,29 @@
+Catalyst::Plugin::HTTP::MeetsConditions 0.001000
+================================================
+
+Support for HTTP/1.1 ETag and Last-Modified techniques.
+
+INSTALLATION
+
+To install this module type the following:
+
+  perl Makefile.PL
+  make
+  make test
+  make install
+
+DEPENDENCIES
+
+This module requires these other modules and libraries:
+
+Class::Accessor::Fast, HTTP::Headers::ETag, List::Util and NEXT.
+
+Catalyst::Runtime, Test::WWW::Mechanize::Catalyst, Test::More and ok
+for testing.
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2008 Bernhard Graf <graf(a)cpan.org>
+
+This library is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
