@@ -1,7 +1,7 @@
-Catalyst::Plugin::HTTP::MeetsConditions 0.001000
-================================================
+Catalyst::Plugin::Cache::HTTP 0.001000
+======================================
 
-Support for HTTP/1.1 ETag and Last-Modified techniques.
+HTTP/1.1 cache validators for Catalyst.
 
 INSTALLATION
 
@@ -14,12 +14,7 @@ To install this module type the following:
 
 DEPENDENCIES
 
-This module requires these other modules and libraries:
-
-Class::Accessor::Fast, HTTP::Headers::ETag, List::Util and NEXT.
-
-Catalyst::Runtime, Test::WWW::Mechanize::Catalyst, Test::More and ok
-for testing.
+See META.yml
 
 COPYRIGHT AND LICENCE
 

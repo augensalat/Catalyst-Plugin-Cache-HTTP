@@ -1,8 +1,9 @@
 package TestApp;
+
 use strict;
 use warnings;
 
-use Catalyst;
+use Catalyst qw(Cache::HTTP);
 
 __PACKAGE__->setup;
 
