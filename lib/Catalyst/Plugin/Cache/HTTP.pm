@@ -30,10 +30,13 @@ __PACKAGE__->mk_accessors(qw(_http_mc_finalized_headers));
 
 =head1 SYNOPSIS
 
+=head2 Load Plugin Into Application
+
   package MyApp;
 
   use Catalyst qw(Cache::HTTP);
 
+=head2 Create a Last-Modified Header
   
   package MyApp::Controller::Foo;
 
@@ -47,57 +50,138 @@ __PACKAGE__->mk_accessors(qw(_http_mc_finalized_headers));
     ...
   }
 
+=head2 Automatic Creation of ETag
 
-  package MyApp::View::Any;
+  package MyApp::View::TT;
 
+  use base 'Catalyst::View::TT';
   use Digest::MD5 'md5_hex';
 
   sub process {
     my $self = shift;
     my $c = $_[0];
 
-    $c->response->headers->etag(md5_hex($c->response->body))
-      if $c->response->body;
+    $self->NEXT::process(@_)
+	or return 0;
 
-    $c->NEXT::process(@_);
+    my $method = $c->request->method;
+    return 1
+	if $method ne 'GET' and $method ne 'HEAD' or
+	   $c->stash->{nocache};    # disable caching explicitely
+
+    my $body = $res->body;
+    if ($body) {
+      utf8::encode($body)
+        if utf8::is_utf8($body);
+      $res->headers->etag(md5_hex($body));
+    }
+
+    return 1;
   }
 
 =head1 DESCRIPTION
 
-=head2 RFC 2616 13.3
+Ever since mankind develops web sites, it has to deal with the problems
+that arise when a site becomes popular. This is especially true for dynamic
+contents. Optimizations of the web application itself are usually followed
+by tweaking the system setup, better hardware, improved connectivity,
+clustering and load balancing. Good if the site yields enough profit to
+fund all this (and the people that are required).
 
-When a cache has a stale entry that it would like to use as a response to a
-client's request, it first has to check with the origin server (or possibly
-an intermediate cache with a fresh response) to see if its cached entry is
-still usable. We call this "validating" the cache entry. Since we do not
-want to have to pay the overhead of retransmitting the full response if the
-cached entry is good, and we do not want to pay the overhead of an extra
-round trip if the cached entry is invalid, the HTTP/1.1 protocol supports
-the use of conditional methods.
+There are also numerous modules on the CPAN and helpful tips all over the
+World Wide Web about how to crack the whip on Catalyst applications.
 
-The key protocol features for supporting conditional methods are those
-concerned with "cache validators." When an origin server generates a full
-response, it attaches some sort of validator to it, which is kept with the
-cache entry. When a client (user agent or proxy cache) makes a conditional
-request for a resource for which it has a cache entry, it includes the
-associated validator in the request.
+Noticeably often is overlooked, that more than a decade ago the "fathers"
+of the WWW have created concepts in C<HTTP/1.1> to reduce traffic between
+web server and web client (and proxy where applicable). All common web
+browsers support these concepts for many years now.
 
-The server then checks that validator against the current validator for the
-entity, and, if they match (see section 13.3.3), it responds with a special
-status code (usually, 304 (Not Modified)) and no entity-body. Otherwise, it
-returns a full response (including entity-body). Thus, we avoid
-transmitting the full response if the validator matches, and we avoid an
-extra round trip if it does not match.
+These concepts can accelerate a web application and save resources at the
+same time.
 
-In HTTP/1.1, a conditional request looks exactly the same as a normal
-request for the same resource, except that it carries a special header
-(which includes the validator) that implicitly turns the method (usually,
-GET) into a conditional.
+How this is possible? You can look up the concept in RFC 2616 section 13.3,
+plus the implementation in sections 14.19, 14.24, 14.25, 14.26, 14.28 and
+14.44. I can tell this much: This plugin does not manage any cache on the
+server and avoids transmitting data where possible.
 
-The protocol includes both positive and negative senses of cache-
-validating conditions. That is, it is possible to request either that a
-method be performed if and only if a validator matches or if and only if no
-validators match.
+To utilize this concept in your Catalyst based application some rather small
+additions have to be made in the code:
+
+=over
+
+=item 1. Use the plugin
+
+This is easy: In the application class (often referred as MyApp.pm) just
+add C<Cache::HTTP> to the list of plugins after C<use Catalyst>.
+
+=item 2. Add appropriate response headers
+
+Those headers are C<Last-Modified> and C<ETag>. The
+L<< headers method of Catalyst::Response|Catalyst::Response/$res->headers >>
+which actually provides us with an instance of L<HTTP::Headers|HTTP::Headers>
+gives us two handy accessors to those header lines: C<last_modified> and
+C<etag>.
+
+=over
+
+=item 2.1 C<< $c->response->headers->last_modified($unix_timestamp) >>
+
+If this exists in a response for a requested resource, then for the next
+request to the same resource a modern web browser will add a line to the
+request headers to check if the resource data has changed since the
+C<Last-Modified> date, that was given with the last response. If the
+server answers with a status code C<304> and an empty body, the browser
+takes the data for this resource from its local cache.
+
+=item 2.2 C<< $c->response->headers->etag($entity_tag) >>
+
+The entity tag is a unique representation of a resource. Usually a digest
+of the response body serves well for this purpose, so for that case
+whenever you read "ETag" you might replace it with "checksum". If an
+C<Etag> exists in a response for a requested resource, then for the next
+request to the same resource the browser will add a line to the request
+headers with that ETag, that tells the server to only transmit the body if
+the ETag for the resource has changed. If it hasn't the server responds
+with a status code C<304> and an empty body, and the browser takes the
+data for this resource from its local cache.
+
+=back
+
+=back
+
+=head1 CAVEATS
+
+Using this concept involves the risk of breaking something!
+
+But don't be scared. The concept is ok. It breaks only if it is not used
+correctly.
+
+Especially the C<Last-Modified> header has some flaws:
+
+First of all the accuracy of it cannot be better than the HTTP time
+interval: one second.
+
+But what is really hazardous is trying to calculate a last_modified
+timestamp for dynamic pages.
+
+As a rough rule of thumb, never use C<last_modified> when
+
+=over
+
+=item *
+
+serving result sets joined from multiple database tables,
+
+=item *
+
+the output depends on input parameters.
+
+=back
+
+An C<ETag> header that is calculated as a checksum of the actual
+response body is much more robust. The only real drawback is, that
+calculating this checksum costs a few CPU cycles. The L</SYNOPSIS> at the
+top shows an example how to create this C<ETag> header automatically.
 
 =head1 INTERNAL METHODS
 
