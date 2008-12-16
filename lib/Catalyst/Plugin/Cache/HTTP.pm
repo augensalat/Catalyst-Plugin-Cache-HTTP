@@ -7,7 +7,7 @@ use warnings;
 
 use 5.008_001;
 
-use NEXT;
+use MRO::Compat;
 
 BEGIN {
     require List::Util;
@@ -55,13 +55,14 @@ __PACKAGE__->mk_accessors(qw(_http_mc_finalized_headers));
   package MyApp::View::TT;
 
   use base 'Catalyst::View::TT';
+  use MRO::Compat;
   use Digest::MD5 'md5_hex';
 
   sub process {
     my $self = shift;
     my $c = $_[0];
 
-    $self->NEXT::process(@_)
+    $self->next::method(@_)
 	or return 0;
 
     my $method = $c->request->method;
@@ -210,7 +211,7 @@ sub finalize_headers {
 
     $c->_http_mc_finalized_headers(1);	# Kilroy was here
 
-    return $c->NEXT::finalize_headers(@_);
+    return $c->next::method(@_);
 }
 
 # code borrowed from apache 2.2.10 modules/http/http_protocol.c
