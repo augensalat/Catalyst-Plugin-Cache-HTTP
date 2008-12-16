@@ -14,6 +14,6 @@ build_requires	'ok';
 requires	'Class::Accessor::Fast';
 requires	'HTTP::Headers::ETag';
 requires	'List::Util';
-requires	'NEXT';
+requires	'MRO::Compat';
 
 WriteAll;
