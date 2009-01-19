@@ -70,11 +70,11 @@ __PACKAGE__->mk_accessors(qw(_http_mc_finalized_headers));
 	if $method ne 'GET' and $method ne 'HEAD' or
 	   $c->stash->{nocache};    # disable caching explicitely
 
-    my $body = $res->body;
+    my $body = $c->response->body;
     if ($body) {
       utf8::encode($body)
         if utf8::is_utf8($body);
-      $res->headers->etag(md5_hex($body));
+      $c->response->headers->etag(md5_hex($body));
     }
 
     return 1;
@@ -102,8 +102,8 @@ same time.
 
 How this is possible? You can look up the concept in RFC 2616 section 13.3,
 plus the implementation in sections 14.19, 14.24, 14.25, 14.26, 14.28 and
-14.44. I can tell this much: This plugin does not manage any cache on the
-server and avoids transmitting data where possible.
+14.44. To cut a long story short: This plugin does not manage any cache on
+the server and avoids transmitting data where possible.
 
 To utilize this concept in your Catalyst based application some rather small
 additions have to be made in the code:
@@ -136,9 +136,9 @@ takes the data for this resource from its local cache.
 
 =item 2.2 C<< $c->response->headers->etag($entity_tag) >>
 
-The entity tag is a unique representation of a resource. Usually a digest
-of the response body serves well for this purpose, so for that case
-whenever you read "ETag" you might replace it with "checksum". If an
+The entity tag is a unique representation of data from a resource. Usually
+a digest of the response body serves well for this purpose, so for that
+case whenever you read "ETag" you might replace it with "checksum". If an
 C<Etag> exists in a response for a requested resource, then for the next
 request to the same resource the browser will add a line to the request
 headers with that ETag, that tells the server to only transmit the body if
@@ -154,9 +154,6 @@ data for this resource from its local cache.
 
 Using this concept involves the risk of breaking something!
 
-But don't be scared. The concept is ok. It breaks only if it is not used
-correctly.
-
 Especially the C<Last-Modified> header has some flaws:
 
 First of all the accuracy of it cannot be better than the HTTP time
@@ -171,7 +168,7 @@ As a rough rule of thumb, never use C<last_modified> when
 
 =item *
 
-serving result sets joined from multiple database tables,
+serving results joined from multiple sources,
 
 =item *
 
@@ -179,10 +176,14 @@ the output depends on input parameters.
 
 =back
 
+Hence C<Last-Modified> is ideal for serving data without changing it
+(e.g. images) or for an RSS feed where C<Last-Modified> is the time of the
+latest entry.
+
 An C<ETag> header that is calculated as a checksum of the actual
-response body is much more robust. The only real drawback is, that
-calculating this checksum costs a few CPU cycles. The L</SYNOPSIS> at the
-top shows an example how to create this C<ETag> header automatically.
+response body is much more robust in general. The only real drawback is,
+that calculating this checksum costs a few CPU cycles. The L</SYNOPSIS> at
+the top shows an example how to create this C<ETag> header automatically.
 
 =head1 INTERNAL METHODS
 
@@ -336,7 +337,7 @@ on your bug as I make changes.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2008 Bernhard Graf, all rights reserved.
+Copyright 2009 Bernhard Graf.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
